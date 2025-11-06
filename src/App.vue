@@ -245,16 +245,6 @@ const generateReport = async () => {
     </div>
 
     <div class="content-wrapper">
-      <div class="header">
-        <div class="header-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <h1>代码审计问题清单生成器</h1>
-        <p class="header-subtitle">快速生成专业的代码审计报告附件</p>
-      </div>
-
       <div class="main-card">
         <!-- 文件上传区域 -->
         <div class="upload-section">
@@ -421,7 +411,7 @@ const generateReport = async () => {
 /* 主容器 */
 .app-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8edf2 50%, #dfe6ed 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -445,7 +435,7 @@ const generateReport = async () => {
 .decoration-circle {
   position: absolute;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 122, 255, 0.08);
   backdrop-filter: blur(40px);
 }
 
@@ -500,12 +490,12 @@ const generateReport = async () => {
   width: 64px;
   height: 64px;
   margin: 0 auto 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
   border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 122, 255, 0.25);
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -519,26 +509,26 @@ const generateReport = async () => {
 @keyframes pulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 8px 32px rgba(0, 122, 255, 0.25);
   }
   50% {
     transform: scale(1.05);
-    box-shadow: 0 12px 40px rgba(102, 126, 234, 0.6);
+    box-shadow: 0 12px 40px rgba(0, 122, 255, 0.35);
   }
 }
 
 .header h1 {
   font-size: 36px;
   font-weight: 700;
-  color: white;
+  color: #1d1d1f;
   margin: 0 0 12px 0;
   letter-spacing: -0.5px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-shadow: none;
 }
 
 .header-subtitle {
   font-size: 16px;
-  color: rgba(255, 255, 255, 0.9);
+  color: #86868b;
   margin: 0;
   font-weight: 400;
 }
@@ -571,7 +561,7 @@ const generateReport = async () => {
 .section-badge {
   display: inline-block;
   padding: 4px 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
   color: white;
   font-size: 12px;
   font-weight: 500;
@@ -600,16 +590,16 @@ const generateReport = async () => {
 }
 
 .upload-area:hover {
-  border-color: #667eea;
-  background: linear-gradient(135deg, #e8f0fe 0%, #f5e8ff 100%);
+  border-color: #007AFF;
+  background: linear-gradient(135deg, #e8f4ff 0%, #f0f8ff 100%);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 122, 255, 0.12);
 }
 
 .upload-area.dragging {
-  border-color: #667eea;
-  background: linear-gradient(135deg, #e8f0fe 0%, #f5e8ff 100%);
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  border-color: #007AFF;
+  background: linear-gradient(135deg, #e8f4ff 0%, #f0f8ff 100%);
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.08);
   transform: scale(1.02);
 }
 
@@ -632,7 +622,7 @@ const generateReport = async () => {
 .upload-icon svg {
   width: 28px;
   height: 28px;
-  color: #667eea;
+  color: #007AFF;
   stroke-width: 2;
 }
 
@@ -679,14 +669,14 @@ const generateReport = async () => {
 }
 
 .file-item:hover {
-  border-color: #667eea;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+  border-color: #007AFF;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.08);
 }
 
 .file-icon {
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -795,7 +785,7 @@ const generateReport = async () => {
 }
 
 .select-button:hover {
-  border-color: #667eea;
+  border-color: #007AFF;
   background: #f5f7fa;
   transform: translateY(-1px);
 }
@@ -808,7 +798,7 @@ const generateReport = async () => {
 .generate-button {
   width: 100%;
   padding: 16px 32px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
   color: white;
   border: none;
   border-radius: 12px;
@@ -816,7 +806,7 @@ const generateReport = async () => {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 122, 255, 0.25);
   position: relative;
   overflow: hidden;
 }
@@ -838,7 +828,7 @@ const generateReport = async () => {
 
 .generate-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 12px 32px rgba(0, 122, 255, 0.35);
 }
 
 .generate-button:active:not(:disabled) {
@@ -894,11 +884,11 @@ const generateReport = async () => {
 }
 
 .custom-input :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1.5px #667eea inset;
+  box-shadow: 0 0 0 1.5px #007AFF inset;
 }
 
 .custom-input :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px #667eea inset;
+  box-shadow: 0 0 0 2px #007AFF inset;
 }
 
 .custom-input-number {
@@ -912,11 +902,11 @@ const generateReport = async () => {
 }
 
 .custom-input-number :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1.5px #667eea inset;
+  box-shadow: 0 0 0 1.5px #007AFF inset;
 }
 
 .custom-input-number :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px #667eea inset;
+  box-shadow: 0 0 0 2px #007AFF inset;
 }
 
 /* 过渡动画 */
