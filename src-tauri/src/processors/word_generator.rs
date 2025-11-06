@@ -148,46 +148,33 @@ impl WordGenerator {
                 .add_run(
                     Run::new()
                         .add_text("问题统计表格")
-                        .size(32)
+                        .size(32) // 小四 = 24, 这里用32表示16磅
                         .bold()
-                        .fonts(RunFonts::new().east_asia("宋体")),
+                        .fonts(RunFonts::new().east_asia("宋体").ascii("Times New Roman")),
                 )
                 .align(AlignmentType::Center),
         );
 
-        // 创建表格
-        let mut table = Table::new(vec![
-            TableRow::new(vec![
-                TableCell::new().add_paragraph(Paragraph::new().add_run(Run::new().add_text("序号").bold())),
-                TableCell::new().add_paragraph(Paragraph::new().add_run(Run::new().add_text("问题名称").bold())),
-                TableCell::new().add_paragraph(Paragraph::new().add_run(Run::new().add_text("严重性级别").bold())),
-                TableCell::new().add_paragraph(Paragraph::new().add_run(Run::new().add_text("问题个数").bold())),
-            ]),
-        ]);
+        // 创建表头行 - 带样式
+        let header_cells = vec![
+            Self::create_header_cell("序号"),
+            Self::create_header_cell("问题名称"),
+            Self::create_header_cell("严重性级别"),
+            Self::create_header_cell("问题个数"),
+        ];
+
+        // 创建表格，设置边框
+        let mut table = Table::new(vec![TableRow::new(header_cells)])
+            .set_grid(vec![1200, 4500, 1800, 1500]) // 调整列宽：序号窄，问题名称宽
+            .align(TableAlignmentType::Center);
 
         // 添加数据行
         for stat in statistics {
             let row = TableRow::new(vec![
-                TableCell::new().add_paragraph(
-                    Paragraph::new()
-                        .add_run(Run::new().add_text(&stat.seq_num.to_string()))
-                        .align(AlignmentType::Center),
-                ),
-                TableCell::new().add_paragraph(
-                    Paragraph::new()
-                        .add_run(Run::new().add_text(&stat.problem_name))
-                        .align(AlignmentType::Center),
-                ),
-                TableCell::new().add_paragraph(
-                    Paragraph::new()
-                        .add_run(Run::new().add_text(&stat.severity_level))
-                        .align(AlignmentType::Center),
-                ),
-                TableCell::new().add_paragraph(
-                    Paragraph::new()
-                        .add_run(Run::new().add_text(&stat.problem_count.to_string()))
-                        .align(AlignmentType::Center),
-                ),
+                Self::create_data_cell(&stat.seq_num.to_string()),
+                Self::create_data_cell(&stat.problem_name),
+                Self::create_data_cell(&stat.severity_level),
+                Self::create_data_cell(&stat.problem_count.to_string()),
             ]);
             table = table.add_row(row);
         }
@@ -196,6 +183,40 @@ impl WordGenerator {
         doc = doc.add_paragraph(Paragraph::new()); // 空行
 
         Ok(doc)
+    }
+
+    /// 创建表头单元格 - 小四字体，宋体，加粗，居中
+    fn create_header_cell(text: &str) -> TableCell {
+        TableCell::new()
+            .add_paragraph(
+                Paragraph::new()
+                    .add_run(
+                        Run::new()
+                            .add_text(text)
+                            .size(24) // 小四 = 12磅 = 24半磅
+                            .bold()
+                            .fonts(RunFonts::new().east_asia("宋体").ascii("Times New Roman")),
+                    )
+                    .align(AlignmentType::Center),
+            )
+            .vertical_align(VAlignType::Center)
+            .shading(Shading::new().fill("D9E2F3")) // 浅蓝色背景
+    }
+
+    /// 创建数据单元格 - 小四字体，宋体，居中
+    fn create_data_cell(text: &str) -> TableCell {
+        TableCell::new()
+            .add_paragraph(
+                Paragraph::new()
+                    .add_run(
+                        Run::new()
+                            .add_text(text)
+                            .size(24) // 小四 = 12磅 = 24半磅
+                            .fonts(RunFonts::new().east_asia("宋体").ascii("Times New Roman")),
+                    )
+                    .align(AlignmentType::Center),
+            )
+            .vertical_align(VAlignType::Center)
     }
 
     /// 添加报告章节 - 使用指定的表格格式
@@ -217,81 +238,66 @@ impl WordGenerator {
         // 添加标题
         doc = doc.add_paragraph(
             Paragraph::new()
-                .add_run(Run::new().add_text(title).size(28).bold().fonts(RunFonts::new().east_asia("宋体")))
-                .style("Heading3")
+                .add_run(
+                    Run::new()
+                        .add_text(title)
+                        .size(28) // 标题字号稍大
+                        .bold()
+                        .fonts(RunFonts::new().east_asia("宋体").ascii("Times New Roman")),
+                )
+                .style("Heading3"),
         );
 
         // 创建报告信息表格 (8行4列)
         let mut table = Table::new(vec![
             // 第1行：问题报告编号 | [编号] | 软件版本 | [版本]
             TableRow::new(vec![
-                TableCell::new()
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text("问题报告编号").fonts(RunFonts::new().east_asia("宋体")))),
-                TableCell::new()
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text(report_number).fonts(RunFonts::new().east_asia("宋体")))),
-                TableCell::new()
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text("软件版本").fonts(RunFonts::new().east_asia("宋体")))),
-                TableCell::new()
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text(code_version).fonts(RunFonts::new().east_asia("宋体")))),
+                Self::create_label_cell("问题报告编号"),
+                Self::create_content_cell(report_number),
+                Self::create_label_cell("软件版本"),
+                Self::create_content_cell(code_version),
             ]),
             // 第2行：测试人 | [测试人] | 测试时间 | [时间]
             TableRow::new(vec![
-                TableCell::new()
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text("测试人").fonts(RunFonts::new().east_asia("宋体")))),
-                TableCell::new()
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text(ceshi_user).fonts(RunFonts::new().east_asia("宋体")))),
-                TableCell::new()
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text("测试时间").fonts(RunFonts::new().east_asia("宋体")))),
-                TableCell::new()
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text(ceshi_time).fonts(RunFonts::new().east_asia("宋体")))),
+                Self::create_label_cell("测试人"),
+                Self::create_content_cell(ceshi_user),
+                Self::create_label_cell("测试时间"),
+                Self::create_content_cell(ceshi_time),
             ]),
             // 第3行：问题描述 (跨3列)
             TableRow::new(vec![
-                TableCell::new()
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text("问题描述").fonts(RunFonts::new().east_asia("宋体")))),
-                TableCell::new()
-                    .grid_span(3)
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text("缺陷描述：").fonts(RunFonts::new().east_asia("宋体"))))
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text(phenomenon).fonts(RunFonts::new().east_asia("宋体"))))
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text(code).fonts(RunFonts::new().east_asia("宋体")))),
+                Self::create_label_cell("问题描述"),
+                Self::create_multiline_cell(&format!(
+                    "缺陷描述：\n{}\n\n{}",
+                    phenomenon, code
+                ))
+                .grid_span(3),
             ]),
             // 第4行：问题严重性级别 (跨3列)
             TableRow::new(vec![
-                TableCell::new()
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text("问题严重性级别").fonts(RunFonts::new().east_asia("宋体")))),
-                TableCell::new()
-                    .grid_span(3)
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text(risk_text).fonts(RunFonts::new().east_asia("宋体")))),
+                Self::create_label_cell("问题严重性级别"),
+                Self::create_content_cell(risk_text).grid_span(3),
             ]),
             // 第5行：相关文件路径 (跨3列)
             TableRow::new(vec![
-                TableCell::new()
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text("相关文件路径").fonts(RunFonts::new().east_asia("宋体")))),
-                TableCell::new()
-                    .grid_span(3)
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text(code_path).fonts(RunFonts::new().east_asia("宋体")))),
+                Self::create_label_cell("相关文件路径"),
+                Self::create_multiline_cell(code_path).grid_span(3),
             ]),
             // 第6行：漏洞说明 (跨3列)
             TableRow::new(vec![
-                TableCell::new()
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text("漏洞说明").fonts(RunFonts::new().east_asia("宋体")))),
-                TableCell::new()
-                    .grid_span(3)
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text(vulnerability).fonts(RunFonts::new().east_asia("宋体")))),
+                Self::create_label_cell("漏洞说明"),
+                Self::create_multiline_cell(vulnerability).grid_span(3),
             ]),
             // 第7行：整改建议 (跨3列)
             TableRow::new(vec![
-                TableCell::new()
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text("整改建议").fonts(RunFonts::new().east_asia("宋体")))),
-                TableCell::new()
-                    .grid_span(3)
-                    .add_paragraph(Paragraph::new().add_run(Run::new().add_text(suggestion).fonts(RunFonts::new().east_asia("宋体")))),
+                Self::create_label_cell("整改建议"),
+                Self::create_multiline_cell(suggestion).grid_span(3),
             ]),
         ]);
 
-        // 设置表格样式
+        // 设置表格样式和列宽
         table = table
-            .set_grid(vec![2000, 2000, 2000, 2000]) // 设置列宽
+            .set_grid(vec![1800, 2800, 1800, 2800]) // 4列：标签-内容-标签-内容
             .align(TableAlignmentType::Center);
 
         doc = doc.add_table(table);
@@ -300,6 +306,80 @@ impl WordGenerator {
         doc = doc.add_paragraph(Paragraph::new());
 
         Ok(doc)
+    }
+
+    /// 创建标签单元格 - 浅灰背景，加粗，居中
+    fn create_label_cell(text: &str) -> TableCell {
+        TableCell::new()
+            .add_paragraph(
+                Paragraph::new()
+                    .add_run(
+                        Run::new()
+                            .add_text(text)
+                            .size(24) // 小四
+                            .bold()
+                            .fonts(RunFonts::new().east_asia("宋体").ascii("Times New Roman")),
+                    )
+                    .align(AlignmentType::Center),
+            )
+            .vertical_align(VAlignType::Center)
+            .shading(Shading::new().fill("F2F2F2")) // 浅灰色背景
+    }
+
+    /// 创建内容单元格 - 普通文本，左对齐，垂直居中
+    fn create_content_cell(text: &str) -> TableCell {
+        TableCell::new()
+            .add_paragraph(
+                Paragraph::new()
+                    .add_run(
+                        Run::new()
+                            .add_text(text)
+                            .size(24) // 小四
+                            .fonts(RunFonts::new().east_asia("宋体").ascii("Times New Roman")),
+                    )
+                    .align(AlignmentType::Left),
+            )
+            .vertical_align(VAlignType::Center)
+    }
+
+    /// 创建多行内容单元格 - 支持换行，左对齐，顶部对齐
+    fn create_multiline_cell(text: &str) -> TableCell {
+        let mut cell = TableCell::new();
+
+        // 处理换行符：Excel中的换行可能是\n, \r\n, 或 _x000D_
+        let cleaned_text = text
+            .replace("_x000D_", "\n")  // Excel特殊换行符
+            .replace("\r\n", "\n")      // Windows换行符
+            .replace('\r', "\n");       // Mac换行符
+
+        // 按行分割文本
+        let lines: Vec<&str> = cleaned_text.split('\n').collect();
+
+        for (i, line) in lines.iter().enumerate() {
+            // 跳过空行，但保留一些间距
+            if line.trim().is_empty() && i > 0 {
+                cell = cell.add_paragraph(Paragraph::new().add_run(Run::new().add_text(" ")));
+                continue;
+            }
+
+            let mut para = Paragraph::new()
+                .add_run(
+                    Run::new()
+                        .add_text(*line) // 解引用 &&str 为 &str
+                        .size(24) // 小四
+                        .fonts(RunFonts::new().east_asia("宋体").ascii("Times New Roman")),
+                )
+                .align(AlignmentType::Left);
+
+            // 为段落间添加适当间距
+            if i > 0 {
+                para = para.line_spacing(LineSpacing::new().before(80).after(0));
+            }
+
+            cell = cell.add_paragraph(para);
+        }
+
+        cell.vertical_align(VAlignType::Top)
     }
 
     /// 生成相关代码文本
