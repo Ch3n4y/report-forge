@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, reactive } from "vue";
+import { ref, reactive, onMounted, onUnmounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import {
   ElMessage,
   ElNotification,
@@ -35,6 +37,57 @@ const config = reactive<ReportConfig>({
 });
 
 const isGenerating = ref(false);
+const isDragging = ref(false);
+let unlistenFileDrop: UnlistenFn | null = null;
+
+// 设置文件拖拽监听
+onMounted(async () => {
+  const webview = getCurrentWebviewWindow();
+
+  unlistenFileDrop = await webview.onDragDropEvent((event) => {
+    if (event.payload.type === "over") {
+      isDragging.value = true;
+    } else if (event.payload.type === "leave") {
+      isDragging.value = false;
+    } else if (event.payload.type === "drop") {
+      isDragging.value = false;
+      const paths = event.payload.paths || [];
+
+      // 过滤Excel文件
+      const excelFiles = paths.filter((path: string) => {
+        const ext = path.split(".").pop()?.toLowerCase();
+        return ext === "xlsx" || ext === "xls";
+      });
+
+      if (excelFiles.length === 0) {
+        ElMessage({
+          message: "请拖拽Excel文件（.xlsx 或 .xls）",
+          type: "warning",
+          offset: 60,
+        });
+        return;
+      }
+
+      // 添加到已选文件列表，避免重复
+      const newFiles = excelFiles.filter((path: string) => !config.excel_files.includes(path));
+      config.excel_files.push(...newFiles);
+
+      if (newFiles.length > 0) {
+        ElMessage({
+          message: `已添加 ${newFiles.length} 个文件`,
+          type: "success",
+          offset: 60,
+        });
+      }
+    }
+  });
+});
+
+onUnmounted(() => {
+  if (unlistenFileDrop) {
+    unlistenFileDrop();
+  }
+});
 
 // 选择Excel文件
 const selectExcelFiles = async () => {
@@ -50,20 +103,32 @@ const selectExcelFiles = async () => {
       title: "选择Excel文件",
     });
 
-    if (selected && selected !== null) {
+    if (selected) {
       const paths = Array.isArray(selected) ? selected : [selected];
       config.excel_files = paths;
-      ElMessage.success(`已选择 ${paths.length} 个文件`);
+      ElMessage({
+        message: `已选择 ${paths.length} 个文件`,
+        type: "success",
+        offset: 60,
+      });
     }
   } catch (error) {
     console.error("选择文件失败:", error);
-    ElMessage.error(`选择文件失败: ${error}`);
+    ElMessage({
+      message: `选择文件失败: ${error}`,
+      type: "error",
+      offset: 60,
+    });
   }
 };
 
 const removeFile = (index: number) => {
   config.excel_files.splice(index, 1);
-  ElMessage.success("已移除文件");
+  ElMessage({
+    message: "已移除文件",
+    type: "success",
+    offset: 60,
+  });
 };
 
 // 选择输出目录
@@ -75,30 +140,54 @@ const selectOutputDir = async () => {
       title: "选择输出目录",
     });
 
-    if (selected && selected !== null) {
+    if (selected) {
       config.output_dir = selected as string;
-      ElMessage.success("已选择输出目录");
+      ElMessage({
+        message: "已选择输出目录",
+        type: "success",
+        offset: 60,
+      });
     }
   } catch (error) {
     console.error("选择目录失败:", error);
-    ElMessage.error(`选择目录失败: ${error}`);
+    ElMessage({
+      message: `选择目录失败: ${error}`,
+      type: "error",
+      placement: "top-right",
+      offset: 60,
+    });
   }
 };
 
 // 生成报告
 const generateReport = async () => {
   if (config.excel_files.length === 0) {
-    ElMessage.warning("请至少选择一个Excel文件");
+    ElMessage({
+      message: "请至少选择一个Excel文件",
+      type: "warning",
+      placement: "top-right",
+      offset: 60,
+    });
     return;
   }
 
   if (!config.output_dir) {
-    ElMessage.warning("请选择输出目录");
+    ElMessage({
+      message: "请选择输出目录",
+      type: "warning",
+      placement: "top-right",
+      offset: 60,
+    });
     return;
   }
 
   if (!config.identifier_tag || !config.ceshi_user) {
-    ElMessage.warning("请填写所有必填字段");
+    ElMessage({
+      message: "请填写所有必填字段",
+      type: "warning",
+      placement: "top-right",
+      offset: 60,
+    });
     return;
   }
 
@@ -112,6 +201,8 @@ const generateReport = async () => {
       message: `报告生成成功！\n文件: ${outputFile}`,
       type: "success",
       duration: 5000,
+      position: "top-right",
+      offset: 60,
     });
 
     // 尝试打开文件
@@ -129,6 +220,8 @@ const generateReport = async () => {
       message: `生成报告失败: ${error}`,
       type: "error",
       duration: 5000,
+      position: "top-right",
+      offset: 60,
     });
   } finally {
     isGenerating.value = false;
@@ -140,7 +233,7 @@ const generateReport = async () => {
   <div class="app-container">
     <div class="content-wrapper">
       <div class="header">
-        <h1>代码审计报告生成器</h1>
+        <h1>代码审计报告问题清单生成器</h1>
       </div>
 
       <div class="main-card">
@@ -149,9 +242,13 @@ const generateReport = async () => {
           <!-- Excel文件 -->
           <div class="form-item">
             <label class="form-label">Excel文件</label>
-            <button class="select-button" @click="selectExcelFiles">
+            <button
+              class="select-button"
+              :class="{ 'dragging': isDragging }"
+              @click="selectExcelFiles"
+            >
               <el-icon><Folder /></el-icon>
-              <span>{{ config.excel_files.length > 0 ? `已选择 ${config.excel_files.length} 个文件` : '选择Excel文件' }}</span>
+              <span>{{ config.excel_files.length > 0 ? `已选择 ${config.excel_files.length} 个文件` : '选择Excel文件或拖拽到此处' }}</span>
             </button>
             <div v-if="config.excel_files.length > 0" class="file-tags">
               <span
@@ -274,20 +371,6 @@ const generateReport = async () => {
   padding: 40px;
 }
 
-.progress-section {
-  margin-bottom: 32px;
-  padding: 24px;
-  background: #f5f7fa;
-  border-radius: 12px;
-}
-
-.progress-text {
-  margin-top: 12px;
-  text-align: center;
-  font-size: 14px;
-  color: #6e6e73;
-}
-
 .form-section {
   display: flex;
   flex-direction: column;
@@ -330,6 +413,12 @@ const generateReport = async () => {
 
 .select-button:active {
   transform: scale(0.98);
+}
+
+.select-button.dragging {
+  border-color: #007aff;
+  background: #e8f4ff;
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
 }
 
 .file-tags {
