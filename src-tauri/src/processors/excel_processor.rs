@@ -6,11 +6,18 @@ use std::path::Path;
 
 pub struct ExcelProcessor;
 
+/// Excel原始数据结构
+#[derive(Debug, Clone)]
+pub struct RawExcelData {
+    pub headers: Vec<String>,
+    pub rows: Vec<Vec<String>>,
+}
+
 impl ExcelProcessor {
-    /// 处理Excel文件并返回结构化结果
-    pub fn process_excel_to_json<P: AsRef<Path>>(excel_file: P) -> Result<ExcelProcessResult> {
+    /// 读取Excel文件的原始数据（不进行去重和分组）
+    pub fn read_excel_raw<P: AsRef<Path>>(excel_file: P) -> Result<RawExcelData> {
         let excel_file = excel_file.as_ref();
-        log::info!("开始处理Excel文件: {:?}", excel_file);
+        log::info!("读取Excel文件原始数据: {:?}", excel_file);
 
         // 打开Excel文件
         let mut workbook: Xlsx<_> = open_workbook(excel_file)
@@ -39,18 +46,93 @@ impl ExcelProcessor {
             })
             .collect();
 
-        if rows.len() <= 1 {
-            anyhow::bail!("Excel文件数据不足");
+        if rows.is_empty() {
+            anyhow::bail!("Excel文件为空");
         }
 
-        log::info!("原始数据行数: {}", rows.len());
+        if rows.len() <= 1 {
+            anyhow::bail!("Excel文件只有表头，没有数据行");
+        }
 
-        // 跳过表头（第一行），从第二行开始
-        let data_rows = &rows[1..];
+        // 第一行是表头
+        let headers = rows[0].clone();
+        let data_rows = rows[1..].to_vec();
+
+        log::info!("表头列数: {}, 数据行数: {}", headers.len(), data_rows.len());
+
+        Ok(RawExcelData {
+            headers,
+            rows: data_rows,
+        })
+    }
+
+    /// 合并多个Excel文件的原始数据，验证表头一致性
+    pub fn merge_excel_files<P: AsRef<Path>>(excel_files: &[P]) -> Result<RawExcelData> {
+        if excel_files.is_empty() {
+            anyhow::bail!("没有提供Excel文件");
+        }
+
+        log::info!("开始合并 {} 个Excel文件", excel_files.len());
+
+        // 读取第一个文件作为基准
+        let first_data = Self::read_excel_raw(&excel_files[0])?;
+        let mut merged_rows = first_data.rows.clone();
+        let reference_headers = first_data.headers.clone();
+
+        log::info!("基准表头: {:?}", reference_headers);
+
+        // 逐个读取并合并其他文件
+        for (index, excel_file) in excel_files.iter().enumerate().skip(1) {
+            let current_data = Self::read_excel_raw(excel_file)?;
+
+            // 验证表头是否一致
+            if current_data.headers.len() != reference_headers.len() {
+                anyhow::bail!(
+                    "文件 {} 的表头列数({})与第一个文件({})不一致",
+                    excel_file.as_ref().display(),
+                    current_data.headers.len(),
+                    reference_headers.len()
+                );
+            }
+
+            // 验证每一列的表头内容是否一致
+            for (i, (current_header, reference_header)) in current_data.headers.iter()
+                .zip(reference_headers.iter())
+                .enumerate()
+            {
+                if current_header.trim() != reference_header.trim() {
+                    anyhow::bail!(
+                        "文件 {} 的第{}列表头(\"{}\")与第一个文件(\"{}\")不一致",
+                        excel_file.as_ref().display(),
+                        i + 1,
+                        current_header,
+                        reference_header
+                    );
+                }
+            }
+
+            // 表头一致，合并数据行
+            log::info!("文件 {} 表头验证通过，合并 {} 行数据", index + 1, current_data.rows.len());
+            merged_rows.extend(current_data.rows);
+        }
+
+        log::info!("合并完成！总数据行数: {}", merged_rows.len());
+
+        Ok(RawExcelData {
+            headers: reference_headers,
+            rows: merged_rows,
+        })
+    }
+
+    /// 从合并后的原始数据处理为结构化结果
+    pub fn process_raw_data(raw_data: RawExcelData) -> Result<ExcelProcessResult> {
+        log::info!("开始处理合并后的数据");
+
+        let rows = raw_data.rows;
 
         // 创建列名（A-P）
-        let column_count = if !data_rows.is_empty() {
-            data_rows[0].len()
+        let column_count = if !rows.is_empty() {
+            rows[0].len()
         } else {
             0
         };
@@ -63,7 +145,7 @@ impl ExcelProcessor {
         // 转换为记录格式
         let mut records: Vec<HashMap<String, Option<String>>> = Vec::new();
 
-        for row in data_rows {
+        for row in &rows {
             let mut record = HashMap::new();
             for (i, value) in row.iter().enumerate() {
                 if i < column_names.len() {
@@ -104,6 +186,14 @@ impl ExcelProcessor {
         );
 
         Ok(result)
+    }
+
+    /// 处理Excel文件并返回结构化结果（保留向后兼容）
+    pub fn process_excel_to_json<P: AsRef<Path>>(excel_file: P) -> Result<ExcelProcessResult> {
+        // 读取原始数据
+        let raw_data = Self::read_excel_raw(excel_file)?;
+        // 处理原始数据
+        Self::process_raw_data(raw_data)
     }
 
     /// 基于指定列去重

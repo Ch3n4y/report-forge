@@ -105,60 +105,77 @@ pub async fn generate_report(
     state.add_log(LogLevel::Info, "开始生成报告...".to_string());
     state.clear_progress();
 
-    // 处理所有Excel文件
-    let mut all_results = Vec::new();
+    // 先合并所有Excel文件
+    state.update_progress(
+        1,
+        3,
+        format!("正在合并 {} 个Excel文件...", config.excel_files.len()),
+    );
 
-    for (idx, excel_file) in config.excel_files.iter().enumerate() {
-        state.update_progress(
-            idx + 1,
-            config.excel_files.len(),
-            format!("正在处理Excel文件: {}", excel_file),
-        );
+    state.add_log(
+        LogLevel::Info,
+        format!("准备合并 {} 个Excel文件", config.excel_files.len()),
+    );
 
-        state.add_log(
-            LogLevel::Info,
-            format!("处理文件 {}/{}: {}", idx + 1, config.excel_files.len(), excel_file),
-        );
-
-        match ExcelProcessor::process_excel_to_json(excel_file) {
-            Ok(result) => {
-                state.add_log(
-                    LogLevel::Success,
-                    format!("文件处理成功: {} 条记录", result.total_records),
-                );
-                all_results.push(result);
-            }
-            Err(e) => {
-                let error_msg = format!("处理文件失败 {}: {}", excel_file, e);
-                state.add_log(LogLevel::Error, error_msg.clone());
-                return Err(error_msg);
-            }
+    // 合并所有Excel文件，验证表头一致性
+    let merged_data = match ExcelProcessor::merge_excel_files(&config.excel_files) {
+        Ok(data) => {
+            state.add_log(
+                LogLevel::Success,
+                format!("Excel文件合并成功！共 {} 行数据", data.rows.len()),
+            );
+            data
         }
-    }
-
-    // 合并所有结果（如果有多个文件）
-    let merged_result = if all_results.len() == 1 {
-        all_results.into_iter().next().unwrap()
-    } else {
-        merge_excel_results(all_results)
+        Err(e) => {
+            let error_msg = format!("合并Excel文件失败: {}", e);
+            state.add_log(LogLevel::Error, error_msg.clone());
+            return Err(error_msg);
+        }
     };
 
+    // 处理合并后的数据（去重、分组）
     state.update_progress(
-        config.excel_files.len(),
-        config.excel_files.len() + 1,
+        2,
+        3,
+        "正在处理数据（去重、分组）...".to_string(),
+    );
+
+    state.add_log(LogLevel::Info, "开始处理合并后的数据...".to_string());
+
+    let processed_result = match ExcelProcessor::process_raw_data(merged_data) {
+        Ok(result) => {
+            state.add_log(
+                LogLevel::Success,
+                format!(
+                    "数据处理成功！共 {} 条记录，{} 个分组",
+                    result.total_records, result.total_groups
+                ),
+            );
+            result
+        }
+        Err(e) => {
+            let error_msg = format!("数据处理失败: {}", e);
+            state.add_log(LogLevel::Error, error_msg.clone());
+            return Err(error_msg);
+        }
+    };
+
+    // 生成Word文档
+    state.update_progress(
+        3,
+        3,
         "正在生成Word文档...".to_string(),
     );
 
-    // 生成Word文档
-    match WordGenerator::generate_report(&config, &merged_result) {
+    match WordGenerator::generate_report(&config, &processed_result) {
         Ok(output_file) => {
             state.add_log(
                 LogLevel::Success,
                 format!("报告生成成功！文件: {}", output_file),
             );
             state.update_progress(
-                config.excel_files.len() + 1,
-                config.excel_files.len() + 1,
+                3,
+                3,
                 "完成！".to_string(),
             );
             Ok(output_file)
@@ -203,21 +220,4 @@ pub async fn clear_logs(state: State<'_, AppState>) -> Result<(), String> {
 pub async fn clear_progress(state: State<'_, AppState>) -> Result<(), String> {
     state.clear_progress();
     Ok(())
-}
-
-/// 合并多个Excel处理结果
-fn merge_excel_results(results: Vec<ExcelProcessResult>) -> ExcelProcessResult {
-    let mut total_records = 0;
-    let mut all_grouped_data = Vec::new();
-
-    for result in results {
-        total_records += result.total_records;
-        all_grouped_data.extend(result.grouped_data);
-    }
-
-    ExcelProcessResult {
-        total_groups: all_grouped_data.len(),
-        total_records,
-        grouped_data: all_grouped_data,
-    }
 }

@@ -47,8 +47,8 @@ cargo clean
 
 ### Application Flow
 1. **User Input**: User selects Excel files and configures report parameters (identifier, test date, code version, etc.)
-2. **Excel Processing**: Rust backend reads Excel files using calamine, deduplicates data based on first 7 columns, groups by problem type (column B) and severity (column D)
-3. **Data Merging**: Multiple Excel files are merged into a single result set
+2. **Excel Merging**: All Excel files are first merged together with header validation
+3. **Data Processing**: Merged data is deduplicated (based on first 7 columns) and grouped by problem type (column B) and severity (column D)
 4. **Word Generation**: docx-rs generates a Word document with statistics table and detailed findings
 5. **Progress Tracking**: Real-time progress updates and logs via Tauri state management
 
@@ -58,7 +58,7 @@ cargo clean
 - `src-tauri/src/lib.rs` - Application entry point, registers Tauri commands and initializes state
 - `src-tauri/src/commands/report_commands.rs` - Tauri commands exposed to frontend, manages AppState for logs and progress
 - `src-tauri/src/models/mod.rs` - Data structures (ReportConfig, ExcelProcessResult, GroupInfo, RiskInfo, etc.)
-- `src-tauri/src/processors/excel_processor.rs` - Excel file parsing, deduplication, and grouping logic
+- `src-tauri/src/processors/excel_processor.rs` - Excel file parsing, merging with header validation, deduplication, and grouping logic
 - `src-tauri/src/processors/word_generator.rs` - Word document generation with tables and formatting
 
 **State Management:**
@@ -69,9 +69,10 @@ The `AppState` struct (in report_commands.rs) maintains:
 ### Frontend Structure
 
 **Single-page application in `src/App.vue`:**
-- File upload component using Element Plus `el-upload`
+- Modern glassmorphism design with gradient background
+- File upload component with drag-and-drop support
 - Form configuration for report parameters
-- Real-time log display panel
+- Real-time log display panel (optional)
 - Progress tracking with percentage display
 - Tauri command invocation using `@tauri-apps/api`
 
@@ -109,9 +110,17 @@ All commands are async and return `Result<T, String>`:
 ## Key Implementation Details
 
 ### Excel Processing Logic
-- Deduplication is based on first 7 columns only (columns A-G)
-- Grouping uses composite key: `{B_column}_{D_column}` (problem name + severity)
-- Results are sorted by: risk level priority (High → Medium → Low) then record count (descending)
+- **Merging Strategy**: All Excel files are first merged into a single dataset before processing
+- **Header Validation**: The first file's headers are used as the reference; all subsequent files must have identical headers (same count and same column names), otherwise an error is returned
+- **Deduplication**: Based on first 7 columns only (columns A-G), performed after merging
+- **Grouping**: Uses composite key `{B_column}_{D_column}` (problem name + severity)
+- **Sorting**: Results are sorted by risk level priority (High → Medium → Low) then record count (descending)
+
+### Excel Processor Methods
+- `read_excel_raw()` - Reads a single Excel file into raw data structure (headers + rows)
+- `merge_excel_files()` - Merges multiple Excel files with header validation
+- `process_raw_data()` - Processes merged raw data (deduplication, grouping, sorting)
+- `process_excel_to_json()` - Convenience method for single file processing (backward compatible)
 
 ### Word Document Generation
 - Creates statistics table first with: sequence number, problem name, severity level, count
